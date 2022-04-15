@@ -1,0 +1,209 @@
+---
+title: "Cwiczenia 5 - preprocessing"
+author: "Julia Kisielewicz, Bartlomiej Serafinowski, Karol Kwaśnik"
+date: "30.03.2022"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+ładowanie danych i pakietow
+```{r}
+auta <- read.delim("data/cars.txt", header = TRUE, sep=",")
+library("dplyr")
+library("ggplot2")
+library("zoo")
+library("statip") #do obliczania mody
+library("markdown")
+```
+
+podglad danych
+```{r}
+summary(auta)
+glimpse(auta)
+str(auta)
+head(auta)
+tail(auta)
+
+#cubicinches jako character zamiast integer
+auta <- mutate(auta, cubicinches = as.integer(cubicinches))
+
+str(auta)
+```
+
+wizualizacja
+```{r}
+boxplot(auta$mpg)
+#2 odstające
+
+boxplot(auta$cylinders)
+#1 odstajace
+
+plot(auta$cubicinches, type="l")
+
+boxplot(auta$hp)
+plot(auta$hp, type="l")
+#4 odstajace
+
+boxplot(auta$weightlbs)
+#2 odstajace
+
+boxplot(auta$time.to.60)
+plot(auta$time.to.60, type="l")
+
+ggplot(auta, aes(x=year)) + geom_bar()
+plot(sort(auta$year), type="l")
+
+ggplot(auta, aes(x=brand)) + geom_bar()
+#rozny zapis tej samej informacji
+
+```
+
+usuniecie wartosci sprzecznych z logika
+```{r}
+auta <- mutate(auta, mpg = ifelse(mpg>5 & mpg<200, mpg, NA))
+auta <- mutate(auta, cylinders = ifelse(cylinders %in% c(4,6,8), cylinders, NA))
+auta <- mutate(auta, hp = ifelse(hp>0 & hp<400, hp, NA))
+auta <- mutate(auta, weightlbs = ifelse(weightlbs<10000, weightlbs, NA))
+
+unique(auta$brand)
+#ujednolicenie nazw
+auta <- mutate(auta, brand = ifelse(brand==" Europe." | brand==" Europan.", "EU", brand))
+auta <- mutate(auta, brand = ifelse(brand==" US." | brand==" USA.", "US", brand))
+auta <- mutate(auta, brand = ifelse(brand==" Japan." | brand==" Japane.", "JAP", brand))
+unique(auta$brand)
+```
+
+ponownie wizualizacja
+```{r}
+plot(auta$mpg, type="l")
+
+plot(auta$cylinders, type="l")
+
+plot(auta$cubicinches, type="l")
+
+boxplot(auta$hp)
+plot(auta$hp, type="l")
+
+plot(auta$weightlbs, type="l")
+
+boxplot(auta$time.to.60)
+plot(auta$time.to.60, type="l")
+
+ggplot(auta, aes(x=year)) + geom_bar()
+plot(sort(auta$year), type="l")
+
+ggplot(auta, aes(x=brand)) + geom_bar()
+```
+
+sprawdzenie ekstremów 
+```{r}
+mn <- mean(auta$time.to.60, na.rm = TRUE)
+std <- sd(auta$time.to.60, na.rm = TRUE)
+lower = mn - 3*std
+upper = mn + 3*std
+
+sum(is.na(auta$time.to.60)) #0
+plot(auta$time.to.60, type="l")
+
+auta <- mutate(auta, time.to.60 = ifelse(time.to.60>lower & time.to.60<upper, time.to.60, NA))
+
+sum(is.na(auta$time.to.60)) #2
+plot(auta$time.to.60, type="l")
+
+#usunięto dwie największe wartości
+
+
+mn <- mean(auta$mpg, na.rm = TRUE)
+std <- sd(auta$mpg, na.rm = TRUE)
+lower = mn - 3*std
+upper = mn + 3*std
+
+sum(is.na(auta$mpg)) #6
+plot(auta$mpg, type="l")
+
+auta <- mutate(auta, mpg = ifelse(mpg>lower & mpg<upper, mpg, NA))
+
+sum(is.na(auta$mpg)) #7
+plot(auta$mpg, type="l")
+
+#usunięto najwieksza wartosc
+
+
+mn <- mean(auta$cubicinches, na.rm = TRUE)
+std <- sd(auta$cubicinches, na.rm = TRUE)
+lower = mn - 3*std
+upper = mn + 3*std
+
+sum(is.na(auta$cubicinches)) #2
+plot(auta$cubicinches, type="l")
+
+auta <- mutate(auta, cubicinches = ifelse(cubicinches>lower & cubicinches<upper, cubicinches, NA))
+
+sum(is.na(auta$cubicinches)) #2
+plot(auta$cubicinches, type="l")
+
+#bez zmian
+
+mn <- mean(auta$hp, na.rm = TRUE)
+std <- sd(auta$hp, na.rm = TRUE)
+lower = mn - 3*std
+upper = mn + 3*std
+
+sum(is.na(auta$hp)) #4
+plot(auta$hp, type="l")
+
+auta <- mutate(auta, hp = ifelse(hp>lower & hp<upper, hp, NA))
+
+sum(is.na(auta$hp)) #5
+plot(auta$hp, type="l")
+
+#usunieto najwieksza wartosc
+
+
+mn <- mean(auta$weightlbs, na.rm = TRUE)
+std <- sd(auta$weightlbs, na.rm = TRUE)
+lower = mn - 3*std
+upper = mn + 3*std
+
+sum(is.na(auta$weightlbs)) #2
+plot(auta$weightlbs, type="l")
+
+auta <- mutate(auta, weightlbs = ifelse(weightlbs>lower & weightlbs<upper, weightlbs, NA))
+
+sum(is.na(auta$weightlbs)) #2
+plot(auta$weightlbs, type="l")
+
+#bez zmian
+```
+
+podgrupy
+```{r}
+eu <- filter(auta, brand=="EU")
+us <- filter(auta, brand=="US")
+jap <- filter(auta, brand=="JAP")
+```
+zastapienie wartosci NA:
+wartości typu integer zastąpione medianami dla danej kolumny,
+wartości double (mpg) wartościami średnimi,
+a dla cylinders i year zastosowano mody, ze względu na jakościowy charakter zmiennych
+
+```{r}
+eu <- mutate(eu, mpg = ifelse(is.na(mpg), round(mean(mpg, na.rm=T),1), mpg))
+eu <- mutate(eu, cylinders = ifelse(is.na(cylinders), mfv(cylinders), cylinders))
+eu <- mutate(eu, time.to.60 = ifelse(is.na(time.to.60), median(time.to.60), time.to.60))
+
+us <- mutate(us, mpg = ifelse(is.na(mpg), round(mean(mpg, na.rm=T),1), mpg))
+us <- mutate(us, cylinders = ifelse(is.na(cylinders), mfv(cylinders), cylinders))
+us <- mutate(us, cubicinches = ifelse(is.na(cubicinches), median(cubicinches, na.rm=T),1), cubicinches)
+us <- mutate(us, hp = ifelse(is.na(hp), median(hp, na.rm=T),1), hp)
+us <- mutate(us, weightlbs = ifelse(is.na(weightlbs), median(weightlbs, na.rm=T),1), weightlbs)
+us <- mutate(us, year = ifelse(is.na(year), mfv(year), year))
+
+jap <- mutate(jap, mpg = ifelse(is.na(mpg), round(mean(mpg, na.rm=T),1), mpg))
+jap <- mutate(jap, cylinders = ifelse(is.na(cylinders), mfv(cylinders), cylinders))
+jap <- mutate(jap, cubicinches = ifelse(is.na(cubicinches), median(cubicinches, na.rm=T),1), cubicinches)
+
+```
+
